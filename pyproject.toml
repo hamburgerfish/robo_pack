@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "robo_pack"
+version = "0.0.4"
+authors = [
+  { name="Erik Papp", email="erik3papp@gmail.com" },
+]
+description = "A package to configure, create and train transformer models."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["torch", "tokenizers", "numpy"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/hamburgerfish/robo_pack"
+Issues = "https://github.com/hamburgerfish/robo_pack/issues"

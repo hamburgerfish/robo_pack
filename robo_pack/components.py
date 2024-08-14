@@ -1,5 +1,3 @@
-import tokenizers.normalizers
-import tokenizers.pre_tokenizers
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
