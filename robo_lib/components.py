@@ -734,7 +734,7 @@ class RoboConstructor(nn.Module):
               eval_iters:int=3,
               learning_rate:float=1e-4,
               pad_token:int=None,
-              tokenizer:TokenizerConstructor=None,
+              dec_tokenizer:TokenizerConstructor=None,
               save_path:str=None,
               label_smoothing:float=0.1
               ) -> None:
@@ -748,8 +748,8 @@ class RoboConstructor(nn.Module):
         enc_training_masks_data = torch.load(enc_training_masks_path, weights_only=True) if enc_training_masks_path != None else None
         enc_eval_masks_data = torch.load(enc_eval_masks_path, weights_only=True) if enc_eval_masks_path != None else None
 
-        if pad_token == None and tokenizer != None:
-            pad_token = tokenizer.pad_token
+        if pad_token == None and dec_tokenizer != None:
+            pad_token = dec_tokenizer.pad_token
 
         self.to(self.device)
 
@@ -797,7 +797,6 @@ class RoboConstructor(nn.Module):
 
         self.eval()
 
-    # use dec and enc tokenizers
     def generate(self,
                 inputs:list[int]|str,
                 max_new_tokens:int=None,
