@@ -142,7 +142,7 @@ While True:
     print(robo.generate(query, dec_tokenizer=decoder_tok, enc_tokenizer=encoder_tok))
 ```
 
-## Shakespeare dialogue generator example
+### Shakespeare dialogue generator example
 - In this example, a decoder-only transformer is created and trained on a file containing all the dialogue written by William Shakespeare in his plays.
 - The training data is in the form of a single .txt file containing the dialogue.
 - The default BPE tokenizer is used in this case, so no argument is specified for `TokenizerConstructor`.

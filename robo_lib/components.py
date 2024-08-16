@@ -202,8 +202,8 @@ class DataProcessor:
                      dec_create_masks:bool=True,
                      dec_block_size_exceeded_policy:str=None,
                      enc_data:list[str]=None,
-                     enc_create_masks=True,
                      enc_max_block_size:int=None,
+                     enc_create_masks:bool=True,
                      enc_block_size_exceeded_policy:str=None
                      ) -> None:
 
@@ -646,7 +646,14 @@ class RoboConstructor(nn.Module):
             self.encoder_blocks = MySequential(*[EncoderBlock(n_embed, enc_n_head, enc_expansion_factor, dropout=dropout) for _ in range(enc_n_blocks)])
         else:
             self.cross_attention = False
+            self.enc_n_blocks = None
+            self.enc_n_head = None
+            self.enc_expansion_factor = None
+            self.enc_vocab_size = None
             self.enc_block_size = None
+            self.enc_token_embedding_table = None
+            self.enc_positional_embedding_table = None
+            self.encoder_blocks = None
 
         self.decoder_blocks = MySequential(*[DecoderBlock(n_embed, dec_n_head, dec_expansion_factor, cross_attention=self.cross_attention, block_size=self.dec_block_size, dropout=dropout) for _ in range(dec_n_blocks)])
         self.ln = nn.LayerNorm(n_embed)
@@ -804,8 +811,8 @@ class RoboConstructor(nn.Module):
                 enc_tokenizer:TokenizerConstructor=None,
                 dec_start_token:int=None,
                 enc_start_token:int=None,
-                enc_end_token:int=None,
                 dec_end_token:int=None,
+                enc_end_token:int=None,
                 separator_token:int=None,
                 new_line_token:int=None,
                 temperature:float=1,
