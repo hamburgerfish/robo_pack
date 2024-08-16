@@ -54,7 +54,7 @@ with open("french_data.txt", "r") as file:
 
 # splitting lists into train and validation sets
 split = 0.9
-n = int(len(english_list) * 0.9)
+n = int(len(english_list) * split)
 english_train = english_list[:n]
 french_train = french_list[:n]
 english_val = english_list[n:]
@@ -170,7 +170,7 @@ with open("shakespeare_dialogues.txt", "r") as file:
 
 # splitting string into train and validation sets
 split = 0.9
-n = int(len(dialogues_str) * 0.9)
+n = int(len(dialogues_str) * split)
 train_data = dialogues_str[:n]
 val_data = dialogues_str[n:]
 
