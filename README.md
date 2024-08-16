@@ -131,7 +131,7 @@ robo.train(
 - In this example, a simple script is created to interact with the user on the command-line, where the user's English input will be translated by the transformer and printed out onto the console in French.
 
 ```python
-import robo-lib as rl
+import robo_lib as rl
 
 robo = rc.load_component("models/eng_to_fr_robo.pkl")
 encoder_tok = rl.load_component("tokenizers/encoder_tok.pkl")
