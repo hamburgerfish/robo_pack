@@ -215,7 +215,7 @@ robo.train(
 - In this example, the user can specify the start of the generated Shakespeare play and the transformer will generate and print the rest, until `max_new_tokens` (1000) tokens are generated.
 - Temperature and top_k are set to 1.2 and 2 respectively to generate a more "creative" output.
 ```python
-import robo-lib as rl
+import robo_lib as rl
 
 robo = rc.load_component("models/shakespeare_robo.pkl")
 tok = rl.load_component("tokenizers/shakespeare_tok.pkl")
