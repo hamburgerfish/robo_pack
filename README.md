@@ -31,7 +31,7 @@ encoder_tok = rl.TokenizerConstructor(tokenizer_type="WordLevel")
 encoder_tok.train("english_data.txt")
 
 decoder_tok = rl.TokenizerConstructor(tokenizer_type="WordLevel")
-encoder_tok.train("french_data.txt")
+decoder_tok.train("french_data.txt")
 
 rl.save_component(encoder_tok, "tokenizers/encoder_tok.pkl")
 rl.save_component(decoder_tok, "tokenizers/decoder_tok.pkl")
@@ -107,7 +107,7 @@ robo = rl.RoboConstructor(
     enc_block_size=100
 )
 
-robo.train(
+robo.train_robo(
     max_iters=20000,
     eval_interval=200,
     batch_size=128,
