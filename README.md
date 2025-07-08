@@ -66,10 +66,8 @@ proc.process_list(
     save_path="data/training",
     dec_data=french_train,
     dec_max_block_size=100,
-    dec_block_size_exceeded_policy="skip",
     enc_data=english_train,
-    enc_max_block_size=100,
-    enc_block_size_exceeded_policy="skip"
+    enc_max_block_size=100
 )
 
 # process and save validation data as data/validation*.pt
@@ -77,10 +75,8 @@ proc.process_list(
     save_path="data/validation",
     dec_data=french_val,
     dec_max_block_size=100,
-    dec_block_size_exceeded_policy="skip",
     enc_data=english_val,
-    enc_max_block_size=100,
-    enc_block_size_exceeded_policy="skip"
+    enc_max_block_size=100
 )
 ```
 - The `RoboConstructor` class is used to create and configure transformer models before trainin.
@@ -111,14 +107,8 @@ robo.train_robo(
     max_iters=20000,
     eval_interval=200,
     batch_size=128,
-    dec_training_path="data/training_decoder_data.pt",
-    dec_eval_path="data/validation_decoder_data.pt",
-    dec_training_masks_path="data/training_decoder_mask_data.pt",
-    dec_eval_masks_path="data/validation_decoder_mask_data.pt",
-    enc_training_path="data/training_encoder_data.pt",
-    enc_eval_path="data/validation_encoder_data.pt",
-    enc_training_masks_path="data/training_encoder_mask_data.pt",
-    enc_eval_masks_path="data/validation_encoder_mask_data.pt",
+    training_dir_path="data/training",
+    eval_dir_path="data/validation",
     dec_tokenizer=decoder_tok,
     save_path="models/eng_to_fr_robo.pkl"
 )
@@ -206,8 +196,8 @@ robo.train(
     max_iters=20000,
     eval_interval=200,
     batch_size=64,
-    dec_training_path="data/shakespeare_train_decoder_data.pt",
-    dec_eval_path="data/shakespeare_valid_decoder_data.pt",
+    training_dir_path="data/shakespeare_train",
+    eval_dir_path="data/shakespeare_valid",
     dec_tokenizer=tok,
     save_path="models/shakespeare_robo.pkl"
 )

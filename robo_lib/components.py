@@ -8,29 +8,24 @@ import pickle
 import itertools
 from pathlib import Path
 import os
+from typing import List, Literal
+
+pre_tokenizers = Literal["Whitespace", "IndividualDigit", "Digits", "BertPreTokenizer", "ByteLevel", "Metaspace", "Punctuation", "UnicodeScripts", "WhitespaceSplit"]
 
 class TokenizerConstructor:
     '''
-
     simple assembler for tokenizer using the tokenizers library
-    tokenizer parameters can be set using strings and list[string]s
+    tokenizer parameters can be set using strings and list[str]s
     strings used for tokenizer_type, pre_tokenizers, normalizers arguments are the names of those present in the
     tokenizers library. Additionally "IndividualDigits" can be used in normalizers for tokenizers.pre_tokenizers.Digits(individual_digits=True)
 
-    train([paths]) function points to text files to be used for training the tokenizer instance
-
-    encode(string) function encodes string using trained tokenizer instance
-
-    decode(list[int]) function decodes list of tokenz using trained tokenizer instance
-
     vocab_size attribute returns the tokenizer instance's vocab_size (untrained tokenizer will have vocab_size=None)
-
 
     '''
     def __init__(self,
                  min_frequency:int=2,
-                 tokenizer_type:str="BPE",
-                 pre_tokenizers:list[str]|str=["Whitespace"],
+                 tokenizer_type:Literal["BPE", "WordLevel", "WordPiece", "Unigram"] = "BPE",
+                 pre_tokenizers: pre_tokenizers|List[pre_tokenizers]=["Whitespace"],
                  normalizers:list[str]|str=["Lowercase", "NFD", "StripAccents", "Strip"],
                  vocab:dict[str,int] = {},
                  special_tokens:list[str]|str=[],
@@ -120,15 +115,24 @@ class TokenizerConstructor:
         
 
     def train(self, training_paths:list[str]|str) -> None:
+        '''
+        points to text files to be used for training the tokenizer instance
+        '''
         if isinstance(training_paths, str):
             training_paths = [training_paths]
         self.tokenizer_type.train(training_paths, trainer=self.trainer)
         self.vocab_size = self.tokenizer_type.get_vocab_size()
 
     def encode(self, inp:str) -> list[int]:
+        '''
+        encodes string using trained tokenizer instance
+        '''
         return self.tokenizer_type.encode(inp).ids
     
     def encode_batch(self, inp:list[str], max_length:int=None) -> list[list[int]]:
+        '''
+        encodes strings in parallel and truncates entries with length > max_length
+        '''
         if max_length is not None:
             self.tokenizer_type.enable_truncation(max_length=max_length)
         out = [row.ids for row in self.tokenizer_type.encode_batch(inp)]
@@ -136,24 +140,23 @@ class TokenizerConstructor:
         return out
     
     def decode(self, inp:list[int]) -> str:
+        '''
+        decodes list of tokenz using trained tokenizer instance
+        '''
         return self.tokenizer_type.decode(inp)
     
 
     
 def create_mask(row:list, block_size:int) -> list[bool]:
     '''
-    
     creates a mask list of length block_size for row, asuming mask does cover the entire row input
-    
     '''
     mask = [1]*len(row) + [0]*(block_size - len(row))
     return mask
 
 def pre_process_data(data:str, start_token_string:str, end_token_string:str) -> list[int]:
     '''
-    
-    returns string row with the tokenizer's start and end tokens if they exist
-    
+    returns data with the tokenizer's start and end tokens added to each row if they exist
     '''
     if start_token_string is None and end_token_string is None:
         return data
@@ -168,11 +171,8 @@ def pre_process_data(data:str, start_token_string:str, end_token_string:str) -> 
 
 def safe_stack(tensor_list:list[torch.tensor]) -> torch.tensor:
     '''
-    
     torch stack with check to ensure tensors are valid in input list
-
     returns torch.stack(out_list) for all valid torch tensors in tensor_list. raises error if no valid tensors
-    
     '''
     out_list = [row for row in tensor_list if isinstance(row, torch.Tensor)]
     if len(out_list) == 0:
@@ -182,21 +182,7 @@ def safe_stack(tensor_list:list[torch.tensor]) -> torch.tensor:
 
 class DataProcessor:
     '''
-    
     data processor can be instantiated by specifying the tokenizer(s) for decoder and encoder data
-
-    process_list() function processes raw data in the form of list[str] or str for decoder and encoder simultaneously and
-    saves them to save_path as .pt files.
-        - encoder and decoder input data should have matching input and outputs so enc_data[n] should have its corresponding
-        decoder data at dec_data[n].
-        - max block size can be specified for both input and output, default takes the max
-        block size provided in the data respectively.
-        - if enc/dec_block_size is specified and enc/dec_block_size_exceeded_policy is not, an error will occur if a piece
-        of data larger than enc/dec_block_size is encountered. enc/dec_block_size_exceeded_policy can be set to "skip" or
-        "trim" to skip rows larger than enc/dec_block_size or truncate the row to specified enc/dec_block_size respectively.
-        - enc/dec_create_masks saves masks tensors to save_path as .pt files.
-
-    
     '''
     def __init__(self,
                  dec_tokenizer:TokenizerConstructor,
@@ -214,6 +200,14 @@ class DataProcessor:
                      enc_create_masks:bool=True,
                      save_path:str = "."
                      ) -> None:
+        '''
+        processes raw data in the form of list[str] or str for decoder and encoder simultaneously and
+        saves them to save_path as .pt files.
+            - encoder and decoder input data should have matching input and outputs so enc_data[n] should have its corresponding
+            decoder data at dec_data[n].
+            - max block size can be specified for both input and output, default takes the max
+            block size provided in the data respectively. If data length > max_length, the data is trimmed.
+        '''
 
         if isinstance(dec_data, str):
             dec_data = [dec_data]
@@ -258,10 +252,8 @@ def get_valid_samples(random_samples:torch.Tensor,
                       block_size:int
                       ) -> list[int]:
     '''
-    
     returns list of len(random_samples) with values corresponding to index values of masks that ensure minimum masked
     values when taking sample of length block_size
-    
     '''
     valid_samples = [0 if sum(masks[row_num]) <= block_size else random.randint(0, sum(masks[row_num]) - block_size) for row_num in random_samples]
     return valid_samples
@@ -273,11 +265,9 @@ def get_batch(data:torch.Tensor,
                 get_offset:bool=True
                 ) -> tuple[torch.tensor]:
     '''
-    
     returns random batches from data tensor using random sample for data selection.
         - returns corresponding batch offset by 1 unless get_offset=False
         - returns corresponding masks batch if masks data is specified
-    
     '''
     batch_size = len(random_samples)
     if block_size is not None and block_size != data.shape[1]:
@@ -310,9 +300,6 @@ def top_kp_filter(logits: torch.Tensor,
         logits: (batch_size, vocab_size) tensor of raw logits.
         top_k: keep only top_k tokens with highest logits.
         top_p: keep the smallest set of tokens with cumulative probability >= top_p.
-        
-    Returns:
-        selected: tensor of selected token indices (batch_size,)
     '''
     logits = logits.clone()  # avoid modifying input logits in-place
 
@@ -359,10 +346,8 @@ def top_kp_filter(logits: torch.Tensor,
 
 class SelfAttention(nn.Module):
     '''
-        
     single self attention block of size head_size.
     triangle_mask=True to apply look-ahead mask of size block_size.
-    
     '''
     def __init__(self,
                  head_size:int,
@@ -390,10 +375,8 @@ class SelfAttention(nn.Module):
                 mask:torch.Tensor=None
                 ) -> torch.tensor:
         '''
-        
         k, q and v are key, tensors to get key, query and value tensors.
         custom mask tensor can be applied.
-        
         '''
         _,T,_ = k.shape
 
@@ -414,12 +397,10 @@ class SelfAttention(nn.Module):
 
 class MultiHeadAttention(nn.Module):
     '''
-        
         multi-head attention block consisting of num_heads SelfAttention blocks and a linear layer to
         rejoin outputs.
         specified head_size, n_embed, dropout, block_size and triangle_mask values are passed through to
         SelfAttention blocks
-        
     '''
     def __init__(self,
                  num_heads:int,
@@ -441,10 +422,8 @@ class MultiHeadAttention(nn.Module):
                 mask:torch.Tensor=None
                 ) -> torch.tensor:
         '''
-        
         k, q and v are key, tensors to get key, query and value tensors.
         custom mask tensor can be applied.
-        
         '''
         out = torch.cat([h(k, q, v, mask=mask) for h in self.heads], dim=-1)
         out = self.dropout(self.proj(out))
@@ -452,11 +431,9 @@ class MultiHeadAttention(nn.Module):
     
 class FeedForward(nn.Module):
     '''
-    
     feed forward layer used after multi-head attention consisting of 2 lieanr layers with
     a ReLU in between. Linear layers expand from n_embed to n_embed * expansion_factor and
     back to n_embed.
-    
     '''
     def __init__(self,
                  n_embed:int,
@@ -478,10 +455,8 @@ class FeedForward(nn.Module):
     
 class EncoderBlock(nn.Module):
     '''
-    
     encoder block consists of a sequence of multi-head attention, LayerNorm, feed-forward, LayerNorm
     head_size is calculated from n_embed // n_head
-    
     '''
     def __init__(self,
                  n_embed:int,
@@ -509,13 +484,11 @@ class EncoderBlock(nn.Module):
 
 class DecoderBlock(nn.Module):
     '''
-    
     decoder block consists of a sequence of multi-head attention, LayerNorm, feed-forward, LayerNorm
     if cross-attention is True, a multi-head attention block and layerNorm is added before feed-forward
     taking specified enc_k and enc_v tensors as value and key tensors. These values should be the output
     of an encoder block.
     head_size is calculated from n_embed // n_head
-    
     '''
     def __init__(self,
                  n_embed:int,
@@ -555,9 +528,7 @@ class DecoderBlock(nn.Module):
     
 class MySequential(nn.Sequential):
     '''
-    
     MySequential serves the same purpose as nn.Sequential but allows for multiple inputs and outputs
-    
     '''
     def forward(self, *input):
         for module in self._modules.values():
@@ -566,39 +537,12 @@ class MySequential(nn.Sequential):
 
 class RoboConstructor(nn.Module):
     '''
-    
     RoboConstructor assembles an encoder-decoder or decoder-only transformer.
     if the enc_* variables are not specified, or enc_n_blocks==0, the transformer will be decoder-only.
         - if any of the dec_* variables are not specified (except dec_expansion_factor) an error will occur.
         - if enc_n_blocks > 0 and any of the enc_* variables are not specified (except enc_expansion_factor and enc_block_size) an error will occur.
     dropout can be specified, default=0.1.
     if device is not specified, device will default to first available among ("cuda", "mps", "cpu")
-
-    prep_data() function returns a batch of specified batch_size, from dec_data (and dec_masks, enc_data and enc_masks if specified)
-        - if encoder is configured in this instance, enc_data must be specified.
-        - dec_block_size must be specified.
-        - if enc_block_size is not specified, the entire block_size of enc_data will be used.
-        this function is for use in train_robo()
-
-    train_robo() function trains the RoboConstructor instance transformer.
-        - training parameters can be specified such as max_iters, eval_interval, batch_size, eval_iters, learning_rate, label_smoothing.
-        - paths must be specified for decoder training data (and encoder training data if encoder-decoder transformer)
-        - optional paths to specify: decoder and encoder masks, decoder and encoder validation data, decoder and encoder validation masks data
-        - if neither pad_token or tokenizer is specified (or tokenizer has no pad_token), any padding in labels will contribute towards the loss
-        which may cause unwanted results. Specifying pad_token and/or tokenizer allows loss to be calculated while ignoring any padding in labels
-        - specify save_path to save the model as a .pkl file every eval_interval iterations using the save_component function.
-
-    generate() function uses the tranformer model from the RoboConstructor instance to generate an output from an input.
-        - input can be in the form of a string if input tokenizer is specified (enc_tokenizer for encoder-decoder and dec_tokenizder for decoder-only),
-        otherwise, it must be in the form of a list of tokens.
-        - if dec_tokenizer is specified, output will be a string.
-        - new tokens are generated until the dec_end_token (or dec_tokenizer.end_token) is generated, or the number of tokens generated == max_new_tokens.
-        - if input tokenizer is not specified, or input tokenizer.start_token is None, enc_start_token must be specified for an encoder-decoder model.
-        - separator_token is used to separate the input and generated tokens for a decoder-only model. If this value is not specified, there
-        will be no distinction between input tokens and generated tokens to the transformer, even if dec_tokenizer is specified.
-        - if new_line_token is not specified, output will be returned in one line, without any "\n" line separators.
-        - temperature, top_k and top_p can be specified to adjust the output.
-
     '''
     def __init__(self,
                  n_embed:int,
@@ -711,6 +655,13 @@ class RoboConstructor(nn.Module):
                   enc_block_size:int=None,
                   enc_masks:str=None
                   ) -> tuple[torch.tensor]:
+        '''
+        returns a batch of specified batch_size, from dec_data (and dec_masks, enc_data and enc_masks if specified)
+            - if encoder is configured in this instance, enc_data must be specified.
+            - dec_block_size must be specified.
+            - if enc_block_size is not specified, the entire block_size of enc_data will be used.
+            this method is for use in train_robo()
+        '''
         random_samples = torch.randint(dec_data.shape[0], (batch_size,))
 
         dec_train_batch_in, dec_train_batch_out, dec_train_masks_in = get_batch(dec_data, random_samples, masks=dec_masks, block_size=dec_block_size, get_offset=True)
@@ -734,7 +685,7 @@ class RoboConstructor(nn.Module):
               eval_interval:int,
               batch_size:int,
               training_dir_path:str,
-              eval_dir_path:str,
+              eval_dir_path:str=None,
               eval_iters:int=3,
               learning_rate:float=1e-4,
               pad_token:int=None,
@@ -742,6 +693,15 @@ class RoboConstructor(nn.Module):
               save_path:str=None,
               label_smoothing:float=0.1
               ) -> None:
+        '''
+        trains the RoboConstructor instance transformer.
+            - training parameters can be specified such as max_iters, eval_interval, batch_size, eval_iters, learning_rate, label_smoothing.
+            - paths must be specified for decoder training data (and encoder training data if encoder-decoder transformer)
+            - optional paths to specify: decoder and encoder masks, decoder and encoder validation data, decoder and encoder validation masks data
+            - if neither pad_token or tokenizer is specified (or tokenizer has no pad_token), any padding in labels will contribute towards the loss
+            which may cause unwanted results. Specifying pad_token and/or tokenizer allows loss to be calculated while ignoring any padding in labels
+            - specify save_path to save the model as a .pkl file every eval_interval iterations using the save_component function.
+        '''
         
         dec_training_path = os.path.join(training_dir_path, "decoder_data.pt")
         dec_training_data = torch.load(dec_training_path, weights_only=True)
@@ -831,6 +791,18 @@ class RoboConstructor(nn.Module):
                 top_k:int=None,
                 top_p:float=None
                 ) -> list[int]|str:
+        '''
+        uses the tranformer model from the RoboConstructor instance to generate an output from an input.
+            - input can be in the form of a string if input tokenizer is specified (enc_tokenizer for encoder-decoder and dec_tokenizder for decoder-only),
+            otherwise, it must be in the form of a list of tokens.
+            - if dec_tokenizer is specified, output will be a string.
+            - new tokens are generated until the dec_end_token (or dec_tokenizer.end_token) is generated, or the number of tokens generated == max_new_tokens.
+            - if input tokenizer is not specified, or input tokenizer.start_token is None, enc_start_token must be specified for an encoder-decoder model.
+            - separator_token is used to separate the input and generated tokens for a decoder-only model. If this value is not specified, there
+            will be no distinction between input tokens and generated tokens to the transformer, even if dec_tokenizer is specified.
+            - if new_line_token is not specified, output will be returned in one line, without any "\n" line separators.
+            - temperature, top_k and top_p can be specified to adjust the output.
+        '''
         max_new_tokens = self.dec_block_size if max_new_tokens is None else max_new_tokens
 
         if self.cross_attention:
@@ -891,9 +863,7 @@ class RoboConstructor(nn.Module):
 
 def save_component(component, save_path:str) -> None:
     '''
-    
     saves component (such as TokenizerConstructor or RoboConstructor) as .pkl file.
-    
     '''
     save_path = save_path + ".pkl" if save_path[-4:] != ".pkl" else save_path
     with open(save_path, "wb") as comp:
@@ -901,9 +871,7 @@ def save_component(component, save_path:str) -> None:
 
 def load_component(load_path:str):
     '''
-    
     loads saved .pkl file into variable.
-    
     '''
     load_path = load_path + ".pkl" if load_path[-4:] != ".pkl" else load_path
     with open(load_path, "rb") as comp:
