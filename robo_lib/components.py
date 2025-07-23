@@ -45,6 +45,7 @@ class TokenizerConstructor:
         self.start_token = self.special_tokens.index(start_token_string) if start_token_string is not None else None
         self.end_token = self.special_tokens.index(end_token_string) if end_token_string is not None else None
         self.pad_token = self.special_tokens.index(pad_token_string) if pad_token_string is not None else None
+        self.pad_token_string = pad_token_string
         self.new_line_token = self.special_tokens.index(new_line_token_string) if new_line_token_string is not None else None
 
         if tokenizer_type == "BPE":
@@ -135,8 +136,10 @@ class TokenizerConstructor:
         '''
         if max_length is not None:
             self.tokenizer_type.enable_truncation(max_length=max_length)
+            self.tokenizer_type.enable_padding(pad_id=self.pad_token, pad_token=self.pad_token_string, length=max_length)
         out = [row.ids for row in self.tokenizer_type.encode_batch(inp)]
         self.tokenizer_type.no_truncation()
+        self.tokenizer_type.enable_padding(pad_id=self.pad_token, pad_token=self.pad_token_string)
         return out
     
     def decode(self, inp:list[int]) -> str:

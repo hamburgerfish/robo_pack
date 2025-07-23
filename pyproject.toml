@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "robo_lib"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Erik Papp", email="erik3papp@gmail.com" },
 ]
