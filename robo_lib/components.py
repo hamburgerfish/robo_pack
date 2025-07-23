@@ -136,10 +136,12 @@ class TokenizerConstructor:
         '''
         if max_length is not None:
             self.tokenizer_type.enable_truncation(max_length=max_length)
-            self.tokenizer_type.enable_padding(pad_id=self.pad_token, pad_token=self.pad_token_string, length=max_length)
+            if self.pad_token is not None:
+                self.tokenizer_type.enable_padding(pad_id=self.pad_token, pad_token=self.pad_token_string, length=max_length)
         out = [row.ids for row in self.tokenizer_type.encode_batch(inp)]
         self.tokenizer_type.no_truncation()
-        self.tokenizer_type.enable_padding(pad_id=self.pad_token, pad_token=self.pad_token_string)
+        if self.pad_token is not None:
+            self.tokenizer_type.enable_padding(pad_id=self.pad_token, pad_token=self.pad_token_string)
         return out
     
     def decode(self, inp:list[int]) -> str:
