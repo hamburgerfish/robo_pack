@@ -45,8 +45,12 @@ class TokenizerConstructor:
         self.start_token = self.special_tokens.index(start_token_string) if start_token_string is not None else None
         self.end_token = self.special_tokens.index(end_token_string) if end_token_string is not None else None
         self.pad_token = self.special_tokens.index(pad_token_string) if pad_token_string is not None else None
-        self.pad_token_string = pad_token_string
         self.new_line_token = self.special_tokens.index(new_line_token_string) if new_line_token_string is not None else None
+
+        self.start_token_string = start_token_string
+        self.end_token_string = end_token_string
+        self.pad_token_string = pad_token_string
+        self.new_line_token_string = new_line_token_string
 
         if tokenizer_type == "BPE":
             self.tokenizer_type = tokenizers.Tokenizer(tokenizers.models.BPE(unk_token=unknown_token_string))
@@ -217,6 +221,7 @@ class DataProcessor:
         if isinstance(dec_data, str):
             dec_data = [dec_data]
         dec_data_length = len(dec_data)
+        dec_data = pre_process_data(dec_data, self.dec_tokenizer.start_token_string, self.dec_tokenizer.end_token_string)
 
         if enc_data is not None:
             if self.enc_tokenizer is None:
@@ -225,6 +230,7 @@ class DataProcessor:
             enc_data_length = len(enc_data)
             if dec_data_length != enc_data_length:
                 raise Exception(f"decoder data and encoder data lengths do not match. decoder_data_length is {dec_data_length}, encoder_data_length is {enc_data_length}")
+            enc_data = pre_process_data(enc_data, self.enc_tokenizer.start_token_string, self.enc_tokenizer.end_token_string)
 
         print("processing data")
         dec_out_list = self.dec_tokenizer.encode_batch(dec_data, max_length=dec_max_block_size)
