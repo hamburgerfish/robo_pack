@@ -561,7 +561,6 @@ class RoboConstructor(nn.Module):
                  enc_vocab_size:int=None,
                  enc_block_size:int=None,
                  enc_expansion_factor:int=4,
-                 enc_positional_encoding:bool=True,
                  dropout:float=0.1,
                  device:str=None
                  ) -> None:
@@ -582,7 +581,6 @@ class RoboConstructor(nn.Module):
         self.dec_positional_embedding_table = nn.Embedding(dec_block_size, n_embed)
 
         if enc_n_blocks != 0:
-            self.enc_positional_encoding = enc_positional_encoding
             self.enc_n_blocks = enc_n_blocks
             self.enc_n_head = enc_n_head
             self.enc_expansion_factor = enc_expansion_factor
@@ -590,8 +588,7 @@ class RoboConstructor(nn.Module):
             self.enc_block_size = enc_block_size
             self.cross_attention = True
             self.enc_token_embedding_table = nn.Embedding(enc_vocab_size, n_embed)
-            if enc_positional_encoding:
-                self.enc_positional_embedding_table = nn.Embedding(enc_block_size, n_embed)
+            self.enc_positional_embedding_table = nn.Embedding(enc_block_size, n_embed)
             self.encoder_blocks = MySequential(*[EncoderBlock(n_embed, enc_n_head, enc_expansion_factor, dropout=dropout) for _ in range(enc_n_blocks)])
         else:
             self.cross_attention = False
@@ -634,11 +631,9 @@ class RoboConstructor(nn.Module):
 
         if self.cross_attention:
             enc_tok_emb = self.enc_token_embedding_table(enc_in)
-            if self.enc_positional_encoding:
-                enc_pos_emb = self.enc_positional_embedding_table(torch.arange(enc_T, device=self.device))
-                enc_x = enc_tok_emb + enc_pos_emb
-            else:
-                enc_x = enc_tok_emb
+            enc_pos_emb = self.enc_positional_embedding_table(torch.arange(enc_T, device=self.device))
+            enc_x = enc_tok_emb + enc_pos_emb
+
 
             enc_out, enc_mask = self.encoder_blocks(enc_x, enc_mask)
         else:
