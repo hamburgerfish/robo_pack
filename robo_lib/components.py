@@ -289,14 +289,14 @@ def get_batch(data:torch.Tensor,
             random_point = get_valid_samples(random_samples, masks, block_size)
         else:
             random_point = torch.randint(data.shape[1] - block_size, (batch_size,))
-        batch_in = torch.stack([data[random_samples[i]][random_point[i]:random_point[i]+block_size-int(get_offset)] for i in range(batch_size)])
-        masks_in = torch.stack([masks[random_samples[i]][random_point[i]:random_point[i]+block_size-int(get_offset)] for i in range(batch_size)]) if masks is not None else None
-        batch_out = torch.stack([data[random_samples[i]][1+random_point[i]:random_point[i]+block_size] for i in range(batch_size)]) if get_offset else None
+        batch_in = safe_stack([data[random_samples[i]][random_point[i]:random_point[i]+block_size-int(get_offset)] for i in range(batch_size)])
+        masks_in = safe_stack([masks[random_samples[i]][random_point[i]:random_point[i]+block_size-int(get_offset)] for i in range(batch_size)]) if masks is not None else None
+        batch_out = safe_stack([data[random_samples[i]][1+random_point[i]:random_point[i]+block_size] for i in range(batch_size)]) if get_offset else None
     else:
         block_size = data.shape[1]
-        batch_in = torch.stack([data[row_num][:block_size-int(get_offset)] for row_num in random_samples])
-        masks_in = torch.stack([masks[row_num][:block_size-int(get_offset)] for row_num in random_samples]) if masks is not None else None
-        batch_out = torch.stack([data[row_num][1:block_size] for row_num in random_samples]) if get_offset else None
+        batch_in = safe_stack([data[row_num][:block_size-int(get_offset)] for row_num in random_samples])
+        masks_in = safe_stack([masks[row_num][:block_size-int(get_offset)] for row_num in random_samples]) if masks is not None else None
+        batch_out = safe_stack([data[row_num][1:block_size] for row_num in random_samples]) if get_offset else None
 
     return batch_in, batch_out, masks_in
 
@@ -697,7 +697,8 @@ class RoboConstructor(nn.Module):
               pad_token:int=None,
               dec_tokenizer:TokenizerConstructor=None,
               save_path:str=None,
-              label_smoothing:float=0.1
+              label_smoothing:float=0.1,
+              optimizer_state_dict_path:str=None
               ) -> None:
         '''
         trains the RoboConstructor instance transformer.
@@ -744,6 +745,13 @@ class RoboConstructor(nn.Module):
             loss_fn = nn.CrossEntropyLoss(label_smoothing=label_smoothing).to(self.device)
         print(sum(p.numel() for p in self.parameters())/1e6, "M parameters")
         optimizer = torch.optim.AdamW(self.parameters(), lr=learning_rate)
+        if optimizer_state_dict_path is not None:
+            opt_path = os.path.join(optimizer_state_dict_path, "opt.pt")
+            if os.path.isfile(opt_path):
+                optimizer.load_state_dict(torch.load(opt_path))
+                for param_group in optimizer.param_groups:
+                    param_group["lr"] = learning_rate
+                    
         @torch.no_grad()
         def estimate_loss() -> dict:
             out = {}
@@ -772,6 +780,8 @@ class RoboConstructor(nn.Module):
                 print(f"step {iter}: train loss {losses['train']:.4f}, eval loss {losses['eval']:.4f}")
                 if save_path is not None:
                     save_component(self, save_path=save_path)
+                if optimizer_state_dict_path is not None:
+                    torch.save(optimizer.state_dict(), os.path.join(optimizer_state_dict_path, "opt.pt"))
 
             dec_x, dec_y, dec_mask, enc_x, enc_mask = self.prep_data(batch_size, dec_training_data, dec_masks=dec_training_masks_data, dec_block_size=self.dec_block_size, enc_data=enc_training_data, enc_masks=enc_training_masks_data, enc_block_size=self.enc_block_size)
             proj_output = self.forward(dec_x, dec_mask, enc_x, enc_mask)
