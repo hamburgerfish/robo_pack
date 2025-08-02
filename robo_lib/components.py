@@ -393,6 +393,7 @@ class SelfAttention(nn.Module):
 
         k = self.key(k)
         q = self.query(q)
+        v = self.value(v)
 
         wei = q @ k.transpose(-2,-1) * k.shape[-1]**-0.5
         if self.triangle_mask and self.block_size >= 0:
@@ -402,7 +403,6 @@ class SelfAttention(nn.Module):
         wei = F.softmax(wei, dim=-1)
         wei = self.dropout(wei)
 
-        v = self.value(v)
         out = wei @ v
         return out
 
@@ -759,13 +759,13 @@ class RoboConstructor(nn.Module):
             losses = torch.zeros(eval_iters)
             for k in range(eval_iters):
                 dec_x, dec_y, dec_mask, enc_x, enc_mask = self.prep_data(batch_size, dec_training_data, dec_masks=dec_training_masks_data, dec_block_size=self.dec_block_size, enc_data=enc_training_data, enc_masks=enc_training_masks_data, enc_block_size=self.enc_block_size)
-                proj_output = self.forward(dec_x, dec_mask, enc_x, enc_mask)
+                proj_output = self(dec_x, dec_mask, enc_x, enc_mask)
                 losses[k] = loss_fn(proj_output.view(-1, self.dec_vocab_size), dec_y.view(-1))
             out["train"] = losses.mean()
             if dec_eval_data is not None:
                 for k in range(eval_iters):
                     dec_x, dec_y, dec_mask, enc_x, enc_mask = self.prep_data(batch_size, dec_eval_data, dec_masks=dec_eval_masks_data, dec_block_size=self.dec_block_size, enc_data=enc_eval_data, enc_masks=enc_eval_masks_data, enc_block_size=self.enc_block_size)
-                    proj_output = self.forward(dec_x, dec_mask, enc_x, enc_mask)
+                    proj_output = self(dec_x, dec_mask, enc_x, enc_mask)
                     losses[k] = loss_fn(proj_output.view(-1, self.dec_vocab_size), dec_y.view(-1))
                 out["eval"] = losses.mean()
             else:
@@ -784,7 +784,7 @@ class RoboConstructor(nn.Module):
                     torch.save(optimizer.state_dict(), os.path.join(optimizer_state_dict_path, "opt.pt"))
 
             dec_x, dec_y, dec_mask, enc_x, enc_mask = self.prep_data(batch_size, dec_training_data, dec_masks=dec_training_masks_data, dec_block_size=self.dec_block_size, enc_data=enc_training_data, enc_masks=enc_training_masks_data, enc_block_size=self.enc_block_size)
-            proj_output = self.forward(dec_x, dec_mask, enc_x, enc_mask)
+            proj_output = self(dec_x, dec_mask, enc_x, enc_mask)
             loss = loss_fn(proj_output.view(-1, self.dec_vocab_size), dec_y.view(-1))
             loss.backward()
             optimizer.step()
